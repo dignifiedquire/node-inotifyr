@@ -7,6 +7,21 @@ diff = require('diff-merge-patch').orderedList.diff
 
 Inotifyr = require '../'
 
+
+collect = (cmd, args, opts, cb) ->
+  child = spawn cmd, args, opts
+  child.stdout.on 'data', (data) -> console.log data.toString()
+  child.stderr.on 'data', (data) -> console.log data.toString()
+  child.on 'close', (code) ->
+    throw new Error("Exited with non zero error code: #{code}") if code isnt 0
+    exec 'find test/fixtures/zipDir -type f -print | wc -l', (err, stdout, stderr) ->
+      fileCount = parseInt stdout, 10
+      exec 'find test/fixtures/zipDir -type d -print | wc -l', (err, stdout, stderr) ->
+        dirCount = parseInt stdout, 10
+        cb(dirCount + fileCount)
+
+
+
 describe 'inotifyr', ->
   beforeEach ->
     fs.ensureDirSync './test/fixtures'
@@ -47,23 +62,13 @@ describe 'inotifyr', ->
           count++
           console.log filename unless stats
 
-        git = spawn 'git', ['clone', 'https://github.com/codio/node-demo.git'], {cwd: './test/fixtures'}
-        git.stdout.on 'data', (data) -> console.log data.toString()
-        git.stderr.on 'data', (data) -> console.log data.toString()
-        git.on 'close', (code) ->
-          expect(code).to.be.eql 0
-
-          exec 'find test/fixtures/node-demo -type f -print | wc -l', (err, stdout, stderr) ->
-            fileCount = parseInt stdout, 10
-            exec 'find test/fixtures/node-demo -type d -print | wc -l', (err, stdout, stderr) ->
-              dirCount = parseInt stdout, 10
-              console.log diff _.uniq(files), files
-              expect(_.uniq(files).length).to.be.eql(fileCount + dirCount)
-              done()
+        collect 'git', ['clone', 'https://github.com/codio/node-demo.git'], {cwd: './test/fixtures'}, (total) ->
+          console.log diff _.uniq(files), files
+          expect(_.uniq(files).length).to.be.eql total
+          done()
 
   [1..5].forEach (i) =>
     it "should register all add events for an unzip action (#{i})", (done) ->
-        @timeout 5000
         watcher = new Inotifyr 'test/fixtures', recursive: yes
         count = 0
         files = []
@@ -72,16 +77,8 @@ describe 'inotifyr', ->
           count++
           console.log filename unless stats
 
-        tar = spawn 'tar', ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures'], {cwd: './test'}
-        tar.stdout.on 'data', (data) -> console.log data.toString()
-        tar.stderr.on 'data', (data) -> console.log data.toString()
-        tar.on 'close', (code) ->
-          expect(code).to.be.eql 0
+        collect 'tar', ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures'], {cwd: './test'}, (total) ->
+          console.log diff _.uniq(files), files
+          expect(_.uniq(files).length).to.be.eql total
+          done()
 
-          exec 'find test/fixtures/zipDir -type f -print | wc -l', (err, stdout, stderr) ->
-            fileCount = parseInt stdout, 10
-            exec 'find test/fixtures/zipDir -type d -print | wc -l', (err, stdout, stderr) ->
-              dirCount = parseInt stdout, 10
-              console.log diff _.uniq(files), files
-              expect(_.uniq(files).length).to.be.eql(fileCount + dirCount)
-              done()
