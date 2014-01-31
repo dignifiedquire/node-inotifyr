@@ -20,6 +20,11 @@
     "url": "https://github.com/Dignifiedquire/node-inotifyr/issues"
   },
   "homepage": "https://github.com/Dignifiedquire/node-inotifyr",
+  "dependencies": {
+    "read-stream": "~2.1.1",
+    "inotify": "~1.2.1",
+    "through2": "~0.4.1"
+  },
   "devDependencies": {
     "chai": "~1.9.0",
     "mocha": "~1.17.1",
