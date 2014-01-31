@@ -1,0 +1,29 @@
+{
+  "name": "node-inotifyr",
+  "version": "0.1.0",
+  "description": "Because file watching is hard.",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --ui bdd --reporter spec --compilers coffee:coffee-script/register test/**/*.spec.coffee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Dignifiedquire/node-inotifyr.git"
+  },
+  "keywords": [
+    "inotify",
+    "filewatching"
+  ],
+  "author": "Friedel Ziegelmayer <dignifiedquire@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Dignifiedquire/node-inotifyr/issues"
+  },
+  "homepage": "https://github.com/Dignifiedquire/node-inotifyr",
+  "devDependencies": {
+    "chai": "~1.9.0",
+    "mocha": "~1.17.1",
+    "coffee-script": "~1.7.1",
+    "fs-extended": "~0.2.0"
+  }
+}
