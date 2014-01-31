@@ -8,15 +8,15 @@ diff = require('diff-merge-patch').orderedList.diff
 Inotifyr = require '../'
 
 
-collect = (cmd, args, opts, cb) ->
+collect = (cmd, args, opts, dir, cb) ->
   child = spawn cmd, args, opts
   child.stdout.on 'data', (data) -> console.log data.toString()
   child.stderr.on 'data', (data) -> console.log data.toString()
   child.on 'close', (code) ->
     throw new Error("Exited with non zero error code: #{code}") if code isnt 0
-    exec 'find test/fixtures/zipDir -type f -print | wc -l', (err, stdout, stderr) ->
+    exec "find #{dir} -type f -print | wc -l", (err, stdout, stderr) ->
       fileCount = parseInt stdout, 10
-      exec 'find test/fixtures/zipDir -type d -print | wc -l', (err, stdout, stderr) ->
+      exec "find #{dir} -type d -print | wc -l", (err, stdout, stderr) ->
         dirCount = parseInt stdout, 10
         cb(dirCount + fileCount)
 
@@ -62,7 +62,8 @@ describe 'inotifyr', ->
           count++
           console.log filename unless stats
 
-        collect 'git', ['clone', 'https://github.com/codio/node-demo.git'], {cwd: './test/fixtures'}, (total) ->
+        args = ['clone', 'https://github.com/codio/node-demo.git']
+        collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (total) ->
           console.log diff _.uniq(files), files
           expect(_.uniq(files).length).to.be.eql total
           done()
@@ -77,7 +78,8 @@ describe 'inotifyr', ->
           count++
           console.log filename unless stats
 
-        collect 'tar', ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures'], {cwd: './test'}, (total) ->
+        args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
+        collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (total) ->
           console.log diff _.uniq(files), files
           expect(_.uniq(files).length).to.be.eql total
           done()
