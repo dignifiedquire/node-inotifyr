@@ -3,7 +3,7 @@ fs = require 'fs-extended'
 path = require 'path'
 {spawn, exec} = require 'child_process'
 _ = require 'lodash'
-diff = require('diff-merge-patch').orderedList.diff
+diff = require('diff-merge-patch').set.diff
 
 Inotifyr = require '../'
 
@@ -14,11 +14,10 @@ collect = (cmd, args, opts, dir, cb) ->
   child.stderr.on 'data', (data) -> console.log data.toString()
   child.on 'close', (code) ->
     throw new Error("Exited with non zero error code: #{code}") if code isnt 0
-    exec "find #{dir} -type f -print | wc -l", (err, stdout, stderr) ->
-      fileCount = parseInt stdout, 10
-      exec "find #{dir} -type d -print | wc -l", (err, stdout, stderr) ->
-        dirCount = parseInt stdout, 10
-        cb(dirCount + fileCount)
+    fs.listAll dir, {recursive: yes}, (err, list) ->
+      list = _.map(list, (item) -> path.resolve path.join dir, item)
+      list.push path.resolve dir
+      cb list
 
 
 
@@ -55,32 +54,28 @@ describe 'inotifyr', ->
     it "should register all add events for a git clone (#{i})", (done) ->
         @timeout 5000
         watcher = new Inotifyr 'test/fixtures', recursive: yes
-        count = 0
         files = []
         watcher.on 'add', (filename, stats) ->
           files.push filename
-          count++
           console.log filename unless stats
 
         args = ['clone', 'https://github.com/codio/node-demo.git']
-        collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (total) ->
-          console.log diff _.uniq(files), files
-          expect(_.uniq(files).length).to.be.eql total
+        collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
+          console.log diff realFiles, files
+          expect(_.uniq(files).length).to.be.eql realFiles.length
           done()
 
   [1..5].forEach (i) =>
     it "should register all add events for an unzip action (#{i})", (done) ->
         watcher = new Inotifyr 'test/fixtures', recursive: yes
-        count = 0
         files = []
         watcher.on 'add', (filename, stats) ->
           files.push filename
-          count++
           console.log filename unless stats
 
         args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
-        collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (total) ->
-          console.log diff _.uniq(files), files
-          expect(_.uniq(files).length).to.be.eql total
+        collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
+          console.log diff realFiles, files
+          expect(_.uniq(files).length).to.be.eql realFiles.length
           done()
 
