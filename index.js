@@ -14,6 +14,20 @@ var ERROR = {
     ENOENT: 'ENOENT'
 };
 
+function emitStatic(emitter, dir) {
+    fs.readdir(dir, function (err, files) {
+        console.log('emitting static');
+        console.log(files);
+        _.forEach(files, function (file) {
+            var p = path.join(dir, file);
+            emitter._emitted.push(p);
+            emitter.emit('add', p, {
+                isDir: false,
+                mtime: +(new Date())
+            });
+        });
+    });
+}
 function addRecursiveWatches(watcher, dir, events, callback, emitter, missing) {
     // Watch all directories inside dir
     fs.listDirs(dir, function (err, dirs) {
@@ -26,15 +40,7 @@ function addRecursiveWatches(watcher, dir, events, callback, emitter, missing) {
             }
             return;
         }
-        if (missing) {
-            console.log('missing %s', dir);
-            fs.readdir(dir, function (err, files) {
-                console.log(files);
-                _.forEach(files, function (file) {
-                    emitter.emit('add', file);
-                });
-            });
-        }
+        if (missing) emitStatic(emitter, dir);
 
         async.each(dirs, function (item) {
             item = path.join(dir, item);
@@ -42,7 +48,7 @@ function addRecursiveWatches(watcher, dir, events, callback, emitter, missing) {
         });
     });
     // Watch the dir itself
-    if (!missing) watchDir(watcher, dir, events, function (event) {
+    if (!missing) watchDir(watcher, dir, events, emitter, function (event) {
         if (event && event.name) {
             event.name = path.join(dir, event.name);
         }
@@ -50,13 +56,16 @@ function addRecursiveWatches(watcher, dir, events, callback, emitter, missing) {
     });
 }
 
-function watchDir(watcher, dir, events, callback) {
+function watchDir(watcher, dir, events, emitter, callback) {
     dir = path.resolve(dir) + '/';
-    watcher.addWatch({
+    var wd = watcher.addWatch({
         path: dir,
         watch_for: events,
         callback: callback
     });
+    if (_.isNumber(wd) && wd > 0) {
+        emitStatic(emitter, dir);
+    }
 }
 
 function watch(watcher, dir, options, emitter) {
@@ -69,7 +78,7 @@ function watch(watcher, dir, options, emitter) {
     if (options.recursive) {
         addRecursiveWatches(watcher, dir, events, callback, emitter);
     } else {
-        watchDir(watcher, dir, events, callback);
+        watchDir(watcher, dir, events, emitter, callback);
     }
 
     stream.on('data', function (data) {
@@ -89,6 +98,12 @@ function watch(watcher, dir, options, emitter) {
         }
 
         if (mask & Inotify.IN_CREATE) {
+            var i = _.findIndex(emitter._emitted, fullPath)
+            if (i > -1) {
+                emitter._emitted.splice(i, 1);
+            }
+
+
             emitter.emit('add', fullPath, {
                 isDir: isDir,
                 mtime: +(new Date())
@@ -109,11 +124,12 @@ var Inotifyr = module.exports = function(dir, options) {
     this._dir = path.resolve(dir);
     this._watcher = new Inotify();
     this._eventStream = watch(this._watcher, dir, this._options, this);
+    this._emitted = [];
 };
 
 
 inherits(Inotifyr, EventEmitter);
 
 Inotifyr.prototype.close = function () {
-    this._watcher.close();
+    return this._watcher.close();
 };
