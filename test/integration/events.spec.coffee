@@ -189,16 +189,18 @@ describe 'Inotifyr Events', ->
       watcher = new Inotifyr 'test/fixtures', events: 'close_nowrite'
 
       # Hack as close_nowrite is emitted quite often
-      i = 0
-      watcher.on 'close_nowrite', (filename, stats) ->
-        if i is 1
-          expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
-          watcher.close()
-          done()
-        i++
+      files = []
+      watcher.on 'close_nowrite', (filename, stats) -> files.push filename
 
       fd = fs.openSync './test/fixtures/new.txt', 'r'
       fs.close fd
+
+      _.delay ->
+        expect(files).to.contain path.resolve 'test/fixtures/new.txt'
+        watcher.close()
+        done()
+      , 50
+
 
   describe 'delete_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
@@ -210,14 +212,28 @@ describe 'Inotifyr Events', ->
       watcher = new Inotifyr 'test/fixtures/new', events: 'delete_self'
       watcher.on 'delete_self', (filename, stats) ->
         expect(filename).to.be.eql path.resolve 'test/fixtures/new'
-        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'isDir', yes
         expect(stats).to.have.property 'mtime'
         watcher.close()
         done()
 
       fs.deleteDirSync 'test/fixtures/new'
 
-    it.skip 'emits when the watched file was removed', (done) ->
+    it 'emits when the watched file was removed', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures/new.txt', events: 'delete_self'
+      watcher.on 'delete_self', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      # Without this delay the watcher doesn't pick up the deletion sometimes
+      _.delay ->
+        fs.deleteFileSync './test/fixtures/new.txt'
+      , 1
 
   describe.skip 'move_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
