@@ -14,6 +14,42 @@ var ERROR = {
     ENOENT: 'ENOENT'
 };
 
+function getEventType(mask) {
+    var I = Inotify;
+    if (mask & Inotify.IN_ACCESS) {
+        return 'access';
+    } else if (mask & Inotify.IN_ATTRIB) {
+        return 'attrib';
+    } else if (mask & Inotify.IN_CLOSE_WRITE) {
+        return 'close_write';
+    } else if (mask & Inotify.IN_CLOSE_NOWRITE) {
+        return 'close_nowrite';
+    } else if (mask & Inotify.IN_CREATE) {
+        return 'create';
+    } else if (mask & Inotify.IN_DELETE) {
+        return 'delete';
+    } else if (mask & Inotify.IN_DELETE_SELF) {
+        return 'delete_self';
+    } else if (mask & Inotify.IN_MODIFY) {
+        return 'modify';
+    } else if (mask & Inotify.IN_MOVE_SELF) {
+        return 'move_self';
+    } else if (mask & Inotify.IN_MOVED_FROM) {
+        return 'move_from';
+    } else if (mask & Inotify.IN_MOVED_TO) {
+        return 'move_to';
+    } else if (mask & Inotify.IN_OPEN) {
+        return 'open';
+    } else if (mask & Inotify.IN_ALL_EVENTS) {
+        return 'all';
+    } else if (mask & Inotify.IN_CLOSE) {
+        return 'close';
+    } else if (mask & Inotify.IN_MOVE) {
+        return 'move';
+    }
+
+}
+
 function emitStatic(emitter, dir) {
     function map(itemPath, stat) {
         var a = {};
@@ -26,8 +62,7 @@ function emitStatic(emitter, dir) {
         _.forEach(files, function (fileObj) {
             var itemPath = Object.keys(fileObj)[0];
             var stat = fileObj[itemPath];
-            emitter._emitted.push(itemPath);
-            emitter.emit('add', itemPath, {
+            emitter.emitSafe('add', itemPath, {
                 isDir: !stat.isFile(),
                 mtime: stat.mtime
             });
@@ -80,7 +115,7 @@ function watch(watcher, dir, options, emitter) {
     var callback = function (event) {
         stream.push(event);
     };
-    var events = Inotify.IN_CREATE
+    var events = Inotify.IN_CREATE;
     if (options.recursive) {
         addRecursiveWatches(watcher, dir, events, callback, emitter);
     } else {
@@ -102,18 +137,14 @@ function watch(watcher, dir, options, emitter) {
         if (isDir) {
             addRecursiveWatches(watcher, fullPath, events, callback, emitter)
         }
-
-        if (mask & Inotify.IN_CREATE) {
-            var i = _.findIndex(emitter._emitted, fullPath)
-            if (i > -1) {
-                emitter._emitted.splice(i, 1);
-            }
-
-
-            emitter.emit('add', fullPath, {
+        var eventType = getEventType(mask);
+        if (eventType === 'create') {
+            emitter.emitSafe('add', fullPath, {
                 isDir: isDir,
-                mtime: +(new Date())
+                mtime: +(new Date)
             });
+        } else if (eventType === 'move_to' || eventType === 'move_from') {
+            //console.log('%s: %s', eventType, fullPath);
         }
     });
 
@@ -135,6 +166,20 @@ var Inotifyr = module.exports = function(dir, options) {
 
 
 inherits(Inotifyr, EventEmitter);
+
+
+// Only emit when the key was not yet emitted
+Inotifyr.prototype.emitSafe = function (event, key, value) {
+    var i = _.findIndex(this._emitted, function (val) {
+       return val === key;
+    });
+    if (i > -1) {
+        //this._emitted.splice(i, 1);
+        return;
+    }
+    this._emitted.push(key);
+    this.emit(event, key, value);
+};
 
 Inotifyr.prototype.close = function () {
     return this._watcher.close();

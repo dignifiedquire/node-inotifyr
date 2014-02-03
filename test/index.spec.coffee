@@ -1,9 +1,13 @@
-expect = require('chai').expect
+chai = require 'chai'
+chai.use require 'sinon-chai'
+expect = chai.expect
 fs = require 'fs-extended'
 path = require 'path'
 {spawn, exec} = require 'child_process'
 _ = require 'lodash'
 diff = require('diff-merge-patch').set.diff
+sinon = require 'sinon'
+
 
 Inotifyr = require '../'
 
@@ -61,8 +65,10 @@ describe 'inotifyr', ->
 
         args = ['clone', 'https://github.com/codio/node-demo.git']
         collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
-          console.log diff realFiles, files
-          expect(_.uniq(files).length).to.be.eql realFiles.length
+          expect(_.uniq files).to.be.eql files
+          realFiles.forEach (file) ->
+            return if file.match /\.git/
+            expect(files).to.contain file
           done()
 
   [1..5].forEach (i) =>
@@ -75,7 +81,19 @@ describe 'inotifyr', ->
 
         args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
         collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
-          console.log diff realFiles, files
-          expect(_.uniq(files).length).to.be.eql realFiles.length
+          expect(_.uniq files).to.be.eql files
+          expect(files.length).to.be.eql realFiles.length
           done()
 
+
+  describe 'emitSafe', ->
+    it 'only emits events that are not yet listed', ->
+      watcher = new Inotifyr 'test/fixtures', recursive: yes
+      watcher._emitted.push 'hello/world'
+      sinon.stub watcher, 'emit'
+
+      watcher.emitSafe 'add', 'hello/world'
+      watcher.emitSafe 'add', 'hello/world/hello'
+
+      expect(watcher.emit).to.have.been.calledOnce
+      expect(watcher.emit).to.have.been.calledWith 'add', 'hello/world/hello'
