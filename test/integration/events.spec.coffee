@@ -249,11 +249,31 @@ describe 'Inotifyr Events', ->
     it 'emits when a directory was moved', (done) ->
     it 'emits when a file was moved', (done) ->
 
-  describe.skip 'close', ->
+  describe 'close', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when a file is closed', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+      fs.createFileSync './test/fixtures/new2.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'close'
+
+      # Hack as close_nowrite is emitted quite often
+      files = []
+      watcher.on 'close', (filename, stats) -> files.push filename
+
+      fd = fs.openSync './test/fixtures/new.txt', 'r'
+      fs.close fd
+      fd = fs.openSync './test/fixtures/new2.txt', 'w'
+      fs.close fd
+
+      _.delay ->
+        expect(files).to.contain path.resolve 'test/fixtures/new.txt'
+        expect(files).to.contain path.resolve 'test/fixtures/new2.txt'
+        watcher.close()
+        done()
+      , 50
 
   describe.skip 'open', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
