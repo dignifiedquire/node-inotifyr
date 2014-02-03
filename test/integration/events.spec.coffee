@@ -233,7 +233,7 @@ describe 'Inotifyr Events', ->
       # Without this delay the watcher doesn't pick up the deletion sometimes
       _.delay ->
         fs.deleteFileSync './test/fixtures/new.txt'
-      , 1
+      , 10
 
   describe 'move_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
@@ -367,15 +367,16 @@ describe 'Inotifyr Events', ->
         expect(stats).to.have.property 'isDir', yes
         expect(stats).to.have.property 'mtime'
 
-      watcher.once 'create', (filename, stats) ->
-        expect(filename).to.be.eql path.resolve 'test/fixtures/new2/test.txt'
-        expect(stats).to.have.property 'isDir', no
-        expect(stats).to.have.property 'mtime'
-        watcher.close()
-        done()
+      files = []
+      watcher.on 'create', (filename, stats) -> files.push filename
 
-      fs.moveDirSync './test/fixtures/new', './test/fixtures/new2'
-      fs.createFileSync './test/fixtures/new2/test.txt', 'hello'
+      fs.moveDir './test/fixtures/new', './test/fixtures/new2', (err) ->
+        fs.createFile './test/fixtures/new2/test.txt', 'hello', (err) ->
+          _.delay ->
+            expect(files).to.contain path.resolve 'test/fixtures/new2/test.txt'
+            watcher.close()
+            done()
+          , 10
 
 
   describe 'close', ->
