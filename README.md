@@ -17,7 +17,7 @@ $ npm install inotifyr
 var Inotifyr = require('inotifyr');
 
 var watcher = new Inotifyr('path/to/watch');
-watcher.on('add', function (filename, stats) {
+watcher.on('create', function (filename, stats) {
   console.log('Added %s: %s', stats.isDir ? 'dir' : 'file', filename);
 });
 ```
@@ -29,9 +29,30 @@ watcher.on('add', function (filename, stats) {
 
 #### Options
 
+An object with the following properties
+
+* `events`: (String | Array) *Default:* `['create', 'modify', 'delete', 'move']`
+   A list of the events below to watch for.
+* `recursive`: (Boolean) *Default:* `false`
+  Should sub directories be watched?
+
 ### Available Events
 
-* `add`
+* `access`:
+* `attrib`:
+* `close_write`:
+* `close_nowrite`:
+* `create`:
+* `delete`:
+* `delete_self`:
+* `modify`:
+* `move_self`:
+* `move_from`:
+* `move_to`:
+* `open`:
+* `all`:
+* `close`:
+* `move`:
 
 ## Development
 

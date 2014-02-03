@@ -11,6 +11,9 @@ sinon = require 'sinon'
 
 Inotifyr = require '../'
 
+touch = (filePath) ->
+  fd = fs.openSync filePath, 'w'
+  fs.close fd
 
 collect = (cmd, args, opts, dir, cb) ->
   child = spawn cmd, args, opts
@@ -25,74 +28,91 @@ collect = (cmd, args, opts, dir, cb) ->
 
 
 describe 'inotifyr', ->
-  beforeEach ->
-    fs.ensureDirSync './test/fixtures'
+  describe 'create', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
 
-  afterEach ->
-    fs.deleteDirSync './test/fixtures'
+    it 'should watch a directory for file create events', (done) ->
+      watcher = new Inotifyr 'test/fixtures', events: 'create'
+      watcher.on 'create', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
 
-  it 'should watch a directory for file add events', (done) ->
-    watcher = new Inotifyr 'test/fixtures'
-    watcher.on 'add', (filename, stats) ->
-      expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
-      expect(stats).to.have.property 'isDir', no
-      expect(stats).to.have.property 'mtime'
-      watcher.close()
-      done()
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
 
-    fs.createFileSync './test/fixtures/new.txt', 'hello world'
+    it 'should watch a directory for directory create events', (done) ->
+      watcher = new Inotifyr 'test/fixtures', events: 'create'
+      watcher.on 'create', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
 
-  it 'should watch a directory for directory add events', (done) ->
-    watcher = new Inotifyr 'test/fixtures'
-    watcher.on 'add', (filename, stats) ->
-      expect(filename).to.be.eql path.resolve 'test/fixtures/new'
-      expect(stats).to.have.property 'isDir', yes
-      expect(stats).to.have.property 'mtime'
-      watcher.close()
-      done()
+      fs.createDirSync './test/fixtures/new'
 
-    fs.createDirSync './test/fixtures/new'
+    it 'should register all create events for a git clone', (done) ->
+      @timeout 5000
+      watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
+      files = []
+      watcher.on 'create', (filename, stats) ->
+        files.push filename
+        console.log filename unless stats
 
-  [1..5].forEach (i) =>
-    it "should register all add events for a git clone (#{i})", (done) ->
-        @timeout 5000
-        watcher = new Inotifyr 'test/fixtures', recursive: yes
-        files = []
-        watcher.on 'add', (filename, stats) ->
-          files.push filename
-          console.log filename unless stats
+      args = ['clone', 'https://github.com/codio/node-demo.git']
+      collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
+        expect(_.uniq files).to.be.eql files
+        realFiles.forEach (file) ->
+          return if file.match /\.git/
+          expect(files).to.contain file
+        done()
 
-        args = ['clone', 'https://github.com/codio/node-demo.git']
-        collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
-          expect(_.uniq files).to.be.eql files
-          realFiles.forEach (file) ->
-            return if file.match /\.git/
-            expect(files).to.contain file
-          done()
+    it 'should register all create events for an unzip action', (done) ->
+      watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
+      files = []
+      watcher.on 'create', (filename, stats) ->
+        files.push filename
+        console.log filename unless stats
 
-  [1..5].forEach (i) =>
-    it "should register all add events for an unzip action (#{i})", (done) ->
-        watcher = new Inotifyr 'test/fixtures', recursive: yes
-        files = []
-        watcher.on 'add', (filename, stats) ->
-          files.push filename
-          console.log filename unless stats
+      args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
+      collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
+        expect(_.uniq files).to.be.eql files
+        expect(files.length).to.be.eql realFiles.length
+        done()
 
-        args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
-        collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
-          expect(_.uniq files).to.be.eql files
-          expect(files.length).to.be.eql realFiles.length
-          done()
+  describe 'modify', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
 
+    it 'should watch a directory for file modify events', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'modify'
+      watcher.on 'modify', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      touch './test/fixtures/new.txt', 'w'
 
   describe '_emitSafe', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
     it 'only emits events that are not yet listed', ->
       watcher = new Inotifyr 'test/fixtures', recursive: yes
       watcher._emitted.push 'hello/world'
       sinon.stub watcher, 'emit'
 
-      watcher._emitSafe 'add', 'hello/world'
-      watcher._emitSafe 'add', 'hello/world/hello'
+      watcher._emitSafe 'create', 'hello/world'
+      watcher._emitSafe 'create', 'hello/world/hello'
 
       expect(watcher.emit).to.have.been.calledOnce
-      expect(watcher.emit).to.have.been.calledWith 'add', 'hello/world/hello'
+      expect(watcher.emit).to.have.been.calledWith 'create', 'hello/world/hello'
+
+
