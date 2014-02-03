@@ -1,5 +1,5 @@
 {
-  "name": "node-inotifyr",
+  "name": "inotifyr",
   "version": "0.1.0",
   "description": "Because file watching is hard.",
   "main": "index.js",
