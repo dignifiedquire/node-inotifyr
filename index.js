@@ -11,7 +11,9 @@ var _ = require('lodash');
 var async = require('async');
 
 var ERROR = {
-    ENOENT: 'ENOENT'
+    ENOENT: 'ENOENT',
+    ELOOP: 'ELOOP',
+    EACCES: 'EACCES'
 };
 
 function getEventType(mask) {
@@ -47,7 +49,6 @@ function getEventType(mask) {
     } else if (mask & Inotify.IN_MOVE) {
         return 'move';
     }
-
 }
 
 var Inotifyr = module.exports = function (dir, options) {
@@ -77,6 +78,10 @@ Inotifyr.prototype._emitStatic = function (dir) {
     fs.listAll(dir, {
         map: map
     }, function (err, files) {
+        // If we can't read the directory don't bother.
+        if (err) {
+            return;
+        }
         _.forEach(files, function (fileObj) {
             var itemPath = Object.keys(fileObj)[0];
             var stat = fileObj[itemPath];
@@ -88,21 +93,16 @@ Inotifyr.prototype._emitStatic = function (dir) {
     });
 }
 
-Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback, missing) {
+Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback) {
     var self = this;
     // Watch all directories inside dir
     fs.listDirs(dir, function (err, dirs) {
         if (err) {
-            if (err.code === ERROR.ENOENT) {
-                // If we can't read the directory yet try again a little bit later.
-                _.delay(function () {
-                    self._addRecursiveWatches(dir, events, callback, true);
-                }, 10);
+            // Ignore some errors
+            if (!_.contains([ERROR.EACCES, ERROR.ENOENT, ERROR.ELOOP], err.code)) {
+                return self.emit('error', err);
             }
-            return;
         }
-        if (missing) self._emitStatic(dir);
-
         async.each(dirs, function (item) {
             item = path.join(dir, item);
             self._addRecursiveWatches(item, events, callback);
@@ -110,7 +110,7 @@ Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback, missi
     });
 
     // Watch the dir itself
-    if (!missing) self._watchDir(dir, events, function (event) {
+    self._watchDir(dir, events, function (event) {
         if (event && event.name) {
             event.name = path.join(dir, event.name);
         }
