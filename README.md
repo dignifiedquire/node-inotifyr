@@ -37,21 +37,22 @@ An object with the following properties
 
 ### Available Events
 
-* `access`:
-* `attrib`:
-* `close_write`:
-* `close_nowrite`:
-* `create`:
-* `delete`:
-* `delete_self`:
-* `modify`:
-* `move_self`:
-* `move_from`:
-* `move_to`:
-* `open`:
-* `all`:
-* `close`:
-* `move`:
+* `access`: File was accessed (read)
+* `attrib`: Metadata changed, e.g., permissions, timestamps, extended attributes,
+  link count (since Linux 2.6.25), UID, GID, etc.
+* `close_write`: File opened for writing was closed
+* `close_nowrite`: File not opened for writing was closed
+* `create`: File/directory created in the watched directory
+* `delete`: File/directory deleted from the watched directory
+* `delete_self`: Watched file/directory was deleted
+* `modify`: File was modified
+* `move_self`: Watched file/directory was moved
+* `move_from`: File moved out of the watched directory
+* `move_to`: File moved into watched directory
+* `open`: File was opened
+* `all`: Watch for all kind of events
+* `close`: (`close_write | close_nowrite`) Close
+* `move`: (`move_to | move_from) Moves
 
 ## Development
 
