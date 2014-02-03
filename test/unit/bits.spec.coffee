@@ -2,7 +2,7 @@ chai = require 'chai'
 expect = chai.expect
 
 {Inotify} = require 'inotify'
-bits = require '../lib/bits'
+bits = require '../../lib/bits'
 
 describe 'bit operations', ->
   describe 'getEventType', ->

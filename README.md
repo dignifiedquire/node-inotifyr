@@ -34,6 +34,12 @@ An object with the following properties
    A list of the events below to watch for.
 * `recursive`: (Boolean) *Default:* `false`
   Should sub directories be watched?
+* `onlydir`: (Boolean) *Default:* `false`
+  Only watch the path if it is a directory.
+* `dont_follow`: (Boolean) *Default:* `false`
+  Do not follow symbolics links
+* `oneshot`: (Boolean) *Default:* `false`
+  Only send events once
 
 ### Available Events
 
@@ -52,7 +58,7 @@ An object with the following properties
 * `open`: File was opened
 * `all`: Watch for all kind of events
 * `close`: (`close_write | close_nowrite`) Close
-* `move`: (`move_to | move_from) Moves
+* `move`: (`move_to | move_from`) Moves
 
 ## Development
 

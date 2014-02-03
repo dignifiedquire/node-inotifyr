@@ -9,7 +9,7 @@ diff = require('diff-merge-patch').set.diff
 sinon = require 'sinon'
 
 
-Inotifyr = require '../'
+Inotifyr = require '../../'
 
 touch = (filePath) ->
   fd = fs.openSync filePath, 'w'
@@ -26,8 +26,7 @@ collect = (cmd, args, opts, dir, cb) ->
       cb list
 
 
-
-describe 'inotifyr', ->
+describe 'Inotifyr Events', ->
   describe 'create', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
@@ -128,20 +127,99 @@ describe 'inotifyr', ->
 
       fs.deleteDirSync './test/fixtures/new'
 
-
-  describe '_emitSafe', ->
+  describe 'access', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
-    it 'only emits events that are not yet listed', ->
-      watcher = new Inotifyr 'test/fixtures', recursive: yes
-      watcher._emitted.push 'create:hello/world'
-      sinon.stub watcher, 'emit'
+    it 'should watch a directory for file access events', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
 
-      watcher._emitSafe 'create', 'hello/world'
-      watcher._emitSafe 'create', 'hello/world/hello'
+      watcher = new Inotifyr 'test/fixtures', events: 'access'
+      watcher.on 'access', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
 
-      expect(watcher.emit).to.have.been.calledOnce
-      expect(watcher.emit).to.have.been.calledWith 'create', 'hello/world/hello'
+      fs.readFileSync './test/fixtures/new.txt'
 
+  describe 'attrib', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
 
+    it 'should watch a directory for file attrib events', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'attrib'
+      watcher.on 'attrib', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.chmodSync './test/fixtures/new.txt', '0755'
+
+  describe.skip 'close_write', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a file in write mode was closed', (done) ->
+
+  describe.skip 'close_nowrite', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a file in read mode was closed', (done) ->
+
+  describe.skip 'delete_self', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when the watched directory was removed', (done) ->
+    it 'emits when the watched file was removed', (done) ->
+
+  describe.skip 'move_self', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when the watched directory was moved', (done) ->
+    it 'emits when the watched file was moved', (done) ->
+
+  describe.skip 'move', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a directory was moved', (done) ->
+    it 'emits when a file was moved', (done) ->
+
+  describe.skip 'close', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a file is closed', (done) ->
+
+  describe.skip 'open', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a file is opened', (done) ->
+
+  describe.skip 'flags', ->
+    describe 'onlydir', ->
+      beforeEach -> fs.ensureDirSync './test/fixtures'
+      afterEach -> fs.deleteDirSync './test/fixtures'
+
+      it 'only watches a directory path', ->
+
+    describe 'dont_follow', ->
+      beforeEach -> fs.ensureDirSync './test/fixtures'
+      afterEach -> fs.deleteDirSync './test/fixtures'
+
+      it 'doesn\'t follow symbolic links', ->
+    describe 'oneshot', ->
+      beforeEach -> fs.ensureDirSync './test/fixtures'
+      afterEach -> fs.deleteDirSync './test/fixtures'
+
+      it 'emits only one event', ->
