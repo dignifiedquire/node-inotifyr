@@ -100,6 +100,35 @@ describe 'inotifyr', ->
 
       touch './test/fixtures/new.txt', 'w'
 
+  describe 'delete', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'should watch a directory for file delete events', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+      watcher = new Inotifyr 'test/fixtures', events: 'delete'
+      watcher.on 'delete', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.deleteFileSync './test/fixtures/new.txt'
+
+    it 'should watch a directory for directory delete events', (done) ->
+      fs.createDirSync './test/fixtures/new'
+      watcher = new Inotifyr 'test/fixtures', events: 'delete'
+      watcher.on 'delete', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.deleteDirSync './test/fixtures/new'
+
+
   describe '_emitSafe', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'

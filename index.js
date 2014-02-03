@@ -74,6 +74,9 @@ Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback) {
                 return self.emit('error', err);
             }
         }
+        if (_.isEmpty(dirs)) {
+            return;
+        }
         async.each(dirs, function (item) {
             item = path.join(dir, item);
             self._addRecursiveWatches(item, events, callback);
