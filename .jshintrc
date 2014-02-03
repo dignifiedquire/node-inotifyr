@@ -4,7 +4,6 @@
     "bitwise": false,
     "indent": 4,
     "expr": true,
-    "camelcase": true,
     "strict": false,
     "trailing": true,
     "curly": false,

@@ -235,19 +235,148 @@ describe 'Inotifyr Events', ->
         fs.deleteFileSync './test/fixtures/new.txt'
       , 1
 
-  describe.skip 'move_self', ->
+  describe 'move_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when the watched directory was moved', (done) ->
-    it 'emits when the watched file was moved', (done) ->
+      fs.createDirSync './test/fixtures/new'
+      watcher = new Inotifyr 'test/fixtures/new', events: 'move_self'
+      watcher.on 'move_self', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
 
-  describe.skip 'move', ->
+      fs.moveDirSync 'test/fixtures/new', 'test/fixtures/new2'
+
+    it 'emits when the watched file was moved', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures/new.txt', events: 'move_self'
+      watcher.on 'move_self', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveFileSync 'test/fixtures/new.txt', 'test/fixtures/new2.txt'
+
+  describe 'move_from', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when a directory was moved', (done) ->
+      fs.createDirSync './test/fixtures/new'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move_from'
+      watcher.on 'move_from', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveDirSync 'test/fixtures/new', 'test/fixtures/new2'
+
     it 'emits when a file was moved', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move_from'
+      watcher.on 'move_from', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveFileSync 'test/fixtures/new.txt', 'test/fixtures/new2.txt'
+
+  describe 'move_to', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a directory was moved', (done) ->
+      fs.createDirSync './test/fixtures/new'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move_to'
+      watcher.on 'move_to', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveDirSync 'test/fixtures/new', 'test/fixtures/new2'
+
+    it 'emits when a file was moved', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move_to'
+      watcher.on 'move_to', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveFileSync 'test/fixtures/new.txt', 'test/fixtures/new2.txt'
+
+  describe 'move', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'emits when a directory was moved', (done) ->
+      fs.createDirSync './test/fixtures/new'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move'
+      watcher.on 'move', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2'
+        expect(stats).to.have.property 'from', path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveDirSync 'test/fixtures/new', 'test/fixtures/new2'
+
+    it 'emits when a file was moved', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'move'
+      watcher.on 'move', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2.txt'
+        expect(stats).to.have.property 'from', path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveFileSync 'test/fixtures/new.txt', 'test/fixtures/new2.txt'
+
+    it 'handles recursive watch after a move', (done) ->
+      fs.createDirSync  './test/fixtures/new'
+
+      watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: ['move', 'create']}
+      files = {}
+      watcher.on 'move', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2'
+        expect(stats).to.have.property 'from', path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', yes
+        expect(stats).to.have.property 'mtime'
+
+      watcher.once 'create', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new2/test.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.moveDirSync './test/fixtures/new', './test/fixtures/new2'
+      fs.createFileSync './test/fixtures/new2/test.txt', 'hello'
+
 
   describe 'close', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
