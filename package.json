@@ -4,7 +4,8 @@
   "description": "Because file watching is hard.",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --ui bdd --reporter spec --compilers coffee:coffee-script/register test/**/*.spec.coffee"
+    "test": "./node_modules/.bin/mocha --ui bdd --reporter spec --compilers coffee:coffee-script/register test/**/*.spec.coffee",
+    "hint": "./node_modules/.bin/jshint index.js"
   },
   "repository": {
     "type": "git",
@@ -34,6 +35,7 @@
     "mocha": "~1.17.1",
     "coffee-script": "~1.7.1",
     "sinon-chai": "~2.5.0",
-    "sinon": "~1.8.1"
+    "sinon": "~1.8.1",
+    "jshint": "~2.4.3"
   }
 }

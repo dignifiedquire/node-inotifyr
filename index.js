@@ -1,3 +1,10 @@
+// Inotifyr
+// ========
+//
+// Because file watching is hard.
+
+// Dependencies
+// ------------
 
 var inherits = require('util').inherits;
 var EventEmitter = require('events').EventEmitter;
@@ -6,12 +13,15 @@ var fs = require('fs-extended');
 
 var ReadStream = require('read-stream');
 var Inotify = require('inotify').Inotify;
-var through = require('through2');
 var _ = require('lodash');
 var async = require('async');
 
 var bits = require('./lib/bits');
 
+// Local Variables
+// ---------------
+
+// List of error codes
 var ERROR = {
     ENOENT: 'ENOENT',
     ELOOP: 'ELOOP',
@@ -19,10 +29,12 @@ var ERROR = {
 };
 
 
+// Constructor
+//
+// dir     - String, the path to watch
+// options - Object.
 var Inotifyr = module.exports = function (dir, options) {
     EventEmitter.call(this);
-    var self = this;
-
     this._options = _.defaults(options || {}, {
         recursive: false,
         events: ['create', 'modify', 'delete', 'move']
@@ -39,6 +51,12 @@ var Inotifyr = module.exports = function (dir, options) {
 
 inherits(Inotifyr, EventEmitter);
 
+// Private Methods
+// ---------------
+
+// Stat a dir and emit create events for all the items inside.
+//
+// dir - String.
 Inotifyr.prototype._emitStatic = function (dir) {
     var self = this;
     function map(itemPath, stat) {
@@ -46,9 +64,7 @@ Inotifyr.prototype._emitStatic = function (dir) {
         a[itemPath] = stat;
         return a;
     }
-    fs.listAll(dir, {
-        map: map
-    }, function (err, files) {
+    fs.listAll(dir, {map: map}, function (err, files) {
         // If we can't read the directory don't bother.
         if (err) {
             return;
@@ -62,8 +78,13 @@ Inotifyr.prototype._emitStatic = function (dir) {
             });
         });
     });
-}
+};
 
+// Recursivel add watches to a given directory for the events passed.
+//
+// dir      - String,
+// events   - Number, bit mask for the events.
+// callback - Function, called for each event that occurs.
 Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback) {
     var self = this;
     // Watch all directories inside dir
@@ -90,25 +111,33 @@ Inotifyr.prototype._addRecursiveWatches = function (dir, events, callback) {
         }
         callback(event);
     });
-}
+};
 
+// Watch a directory.
+//
+// dir      - String, the path to the directory.
+// events   - Number, bit mask for the events.
+// callback - Function, called for each event that occurs.
 Inotifyr.prototype._watchDir = function (dir, events, callback) {
     dir = path.resolve(dir) + '/';
     var wd = this._watcher.addWatch({
         path: dir,
-        watch_for: events,
+        'watch_for': events,
         callback: callback
     });
     if (_.isNumber(wd) && wd > 0) {
         this._emitStatic(dir);
     }
-}
+};
 
-
-
+// Watch
+//
+// dir     - String,
+// options - Object,
+//
+// Returns a read stream.
 Inotifyr.prototype._watch = function (dir, options) {
-    var stream = ReadStream(function () {});
-    var self = this;
+    var stream = new ReadStream(function () {});
     var callback = function (event) {
         stream.push(event);
     };
@@ -119,25 +148,33 @@ Inotifyr.prototype._watch = function (dir, options) {
         this._watchDir(dir, events, callback);
     }
 
-    stream.on('data', function (data) {
-        if (!(data.mask && data.name)) {
-            return;
-        }
+    stream.on('data', this._createDataHandler(dir, events, callback));
+    return stream;
+};
+
+// Create a data event handler
+//
+// dir      - String, the path to the directory.
+// events   - Number, bit mask for the events.
+// callback - Function, called for each event that occurs.
+//
+// Returns a function.
+Inotifyr.prototype._createDataHandler = function (dir, events, callback) {
+    var self = this;
+    return function (data) {
+        if (!(data.mask && data.name)) return;
+
         var mask = data.mask;
         var isDir = !!(mask & Inotify.IN_ISDIR);
         var fullPath = data.name;
-        if (fullPath.split('/').length === 1) {
-            fullPath = path.join(dir, fullPath);
-        }
+        if (fullPath.split('/').length === 1)  fullPath = path.join(dir, fullPath);
         fullPath = path.resolve(fullPath);
+        if (isDir) self._addRecursiveWatches(fullPath, events, callback);
 
-        if (isDir) {
-            self._addRecursiveWatches(fullPath, events, callback)
-        }
         var eventType = bits.getEventType(mask);
         var stat = {
             isDir: isDir,
-            mtime: +(new Date)
+            mtime: +(new Date())
         };
 
         if (eventType === 'create') {
@@ -145,24 +182,28 @@ Inotifyr.prototype._watch = function (dir, options) {
         } else {
             self.emit(eventType, fullPath, stat);
         }
-    });
-    return stream;
-}
+    };
+};
 
-
-// Only emit when the key was not yet emitted
+// Only emit when the key was not yet emitted.
+//
+// event - String,
+// key   - String,
+// value - Object,
 Inotifyr.prototype._emitSafe = function (event, key, value) {
     var i = _.findIndex(this._emitted, function (val) {
-       return val === key;
+        return val === event + ':' + key;
     });
-    if (i > -1) {
-        //this._emitted.splice(i, 1);
-        return;
-    }
-    this._emitted.push(key);
+    if (i > -1) return;
+
+    this._emitted.push(event + ':' + key);
     this.emit(event, key, value);
 };
 
+// Public Methods
+// --------------
+
+// Close the file watcher.
 Inotifyr.prototype.close = function () {
     return this._watcher.close();
 };

@@ -61,3 +61,9 @@ Executing the tests
 ```bash
 $ npm test
 ```
+
+Running jshint
+
+```bash
+$ npm run hint
+```

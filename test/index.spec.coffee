@@ -135,7 +135,7 @@ describe 'inotifyr', ->
 
     it 'only emits events that are not yet listed', ->
       watcher = new Inotifyr 'test/fixtures', recursive: yes
-      watcher._emitted.push 'hello/world'
+      watcher._emitted.push 'create:hello/world'
       sinon.stub watcher, 'emit'
 
       watcher._emitSafe 'create', 'hello/world'
