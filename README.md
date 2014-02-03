@@ -3,8 +3,7 @@
 > Because file watching is hard.
 
 
-[![Build Status](https://travis-ci.org/Dignifiedquire/node-inotifyr.png?branch=master)](https://travis-ci.org/Dignifiedquire/node-inotifyr)
-
+[![Build Status](https://travis-ci.org/Dignifiedquire/node-inotifyr.png?branch=master)](https://travis-ci.org/Dignifiedquire/node-inotifyr) [![Dependency Status](https://david-dm.org/Dignifiedquire/node-inotifyr.png)](https://david-dm.org/Dignifiedquire/node-inotifyr) [![devDependency Status](https://david-dm.org/Dignifiedquire/node-inotifyr/dev-status.png)](https://david-dm.org/Dignifiedquire/node-inotifyr#info=devDependencies)
 ## Installation
 
 ```bash
