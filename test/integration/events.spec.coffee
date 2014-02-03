@@ -161,24 +161,63 @@ describe 'Inotifyr Events', ->
 
       fs.chmodSync './test/fixtures/new.txt', '0755'
 
-  describe.skip 'close_write', ->
+  describe 'close_write', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when a file in write mode was closed', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
 
-  describe.skip 'close_nowrite', ->
+      watcher = new Inotifyr 'test/fixtures', events: 'close_write'
+      watcher.on 'close_write', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fd = fs.openSync './test/fixtures/new.txt', 'w'
+      fs.close fd
+
+  describe 'close_nowrite', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when a file in read mode was closed', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
 
-  describe.skip 'delete_self', ->
+      watcher = new Inotifyr 'test/fixtures', events: 'close_nowrite'
+
+      # Hack as close_nowrite is emitted quite often
+      i = 0
+      watcher.on 'close_nowrite', (filename, stats) ->
+        if i is 1
+          expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+          watcher.close()
+          done()
+        i++
+
+      fd = fs.openSync './test/fixtures/new.txt', 'r'
+      fs.close fd
+
+  describe 'delete_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when the watched directory was removed', (done) ->
-    it 'emits when the watched file was removed', (done) ->
+      fs.createDirSync './test/fixtures/new'
+
+      watcher = new Inotifyr 'test/fixtures/new', events: 'delete_self'
+      watcher.on 'delete_self', (filename, stats) ->
+        expect(filename).to.be.eql path.resolve 'test/fixtures/new'
+        expect(stats).to.have.property 'isDir', no
+        expect(stats).to.have.property 'mtime'
+        watcher.close()
+        done()
+
+      fs.deleteDirSync 'test/fixtures/new'
+
+    it.skip 'emits when the watched file was removed', (done) ->
 
   describe.skip 'move_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
