@@ -14,7 +14,6 @@ Inotifyr = require '../'
 
 collect = (cmd, args, opts, dir, cb) ->
   child = spawn cmd, args, opts
-  child.stdout.on 'data', (data) -> console.log data.toString()
   child.stderr.on 'data', (data) -> console.log data.toString()
   child.on 'close', (code) ->
     throw new Error("Exited with non zero error code: #{code}") if code isnt 0
@@ -86,14 +85,14 @@ describe 'inotifyr', ->
           done()
 
 
-  describe 'emitSafe', ->
+  describe '_emitSafe', ->
     it 'only emits events that are not yet listed', ->
       watcher = new Inotifyr 'test/fixtures', recursive: yes
       watcher._emitted.push 'hello/world'
       sinon.stub watcher, 'emit'
 
-      watcher.emitSafe 'add', 'hello/world'
-      watcher.emitSafe 'add', 'hello/world/hello'
+      watcher._emitSafe 'add', 'hello/world'
+      watcher._emitSafe 'add', 'hello/world/hello'
 
       expect(watcher.emit).to.have.been.calledOnce
       expect(watcher.emit).to.have.been.calledWith 'add', 'hello/world/hello'
