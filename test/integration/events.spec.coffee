@@ -273,13 +273,28 @@ describe 'Inotifyr Events', ->
         expect(files).to.contain path.resolve 'test/fixtures/new2.txt'
         watcher.close()
         done()
-      , 50
+      , 10
 
-  describe.skip 'open', ->
+  describe 'open', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
 
     it 'emits when a file is opened', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'open'
+      files = []
+      watcher.on 'open', (filename, stats) -> files.push filename
+
+      _.delay ->
+        expect(files).to.contain path.resolve 'test/fixtures'
+        expect(files).to.contain path.resolve 'test/fixtures/new.txt'
+        watcher.close()
+        done()
+      , 10
+
+      fd = fs.openSync './test/fixtures/new.txt', 'w'
+      fs.close fd
 
   describe.skip 'flags', ->
     describe 'onlydir', ->
