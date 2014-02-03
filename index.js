@@ -15,15 +15,21 @@ var ERROR = {
 };
 
 function emitStatic(emitter, dir) {
-    fs.readdir(dir, function (err, files) {
-        console.log('emitting static');
-        console.log(files);
-        _.forEach(files, function (file) {
-            var p = path.join(dir, file);
-            emitter._emitted.push(p);
-            emitter.emit('add', p, {
-                isDir: false,
-                mtime: +(new Date())
+    function map(itemPath, stat) {
+        var a = {};
+        a[itemPath] = stat;
+        return a;
+    }
+    fs.listAll(dir, {
+        map: map
+    }, function (err, files) {
+        _.forEach(files, function (fileObj) {
+            var itemPath = Object.keys(fileObj)[0];
+            var stat = fileObj[itemPath];
+            emitter._emitted.push(itemPath);
+            emitter.emit('add', itemPath, {
+                isDir: !stat.isFile(),
+                mtime: stat.mtime
             });
         });
     });

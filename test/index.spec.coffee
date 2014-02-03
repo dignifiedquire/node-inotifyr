@@ -28,7 +28,7 @@ describe 'inotifyr', ->
   afterEach ->
     fs.deleteDirSync './test/fixtures'
 
-  it.skip 'should watch a directory for file add events', (done) ->
+  it 'should watch a directory for file add events', (done) ->
     watcher = new Inotifyr 'test/fixtures'
     watcher.on 'add', (filename, stats) ->
       expect(filename).to.be.eql path.resolve 'test/fixtures/new.txt'
@@ -39,7 +39,7 @@ describe 'inotifyr', ->
 
     fs.createFileSync './test/fixtures/new.txt', 'hello world'
 
-  it.skip 'should watch a directory for directory add events', (done) ->
+  it 'should watch a directory for directory add events', (done) ->
     watcher = new Inotifyr 'test/fixtures'
     watcher.on 'add', (filename, stats) ->
       expect(filename).to.be.eql path.resolve 'test/fixtures/new'
