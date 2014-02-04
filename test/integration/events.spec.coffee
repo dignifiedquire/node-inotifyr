@@ -63,7 +63,9 @@ describe 'Inotifyr Events', ->
 
       args = ['clone', 'https://github.com/codio/node-demo.git']
       collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
-        expect(_.uniq files).to.be.eql files
+        # Filter out lock files as they are generated multiple times in git
+        uniqFiles = _.filter files, (file) -> not file.match /\.lock$/
+        expect(_.uniq uniqFiles).to.be.eql uniqFiles
         realFiles.forEach (file) ->
           return if file.match /\.git/
           expect(files).to.contain file
@@ -74,13 +76,34 @@ describe 'Inotifyr Events', ->
       files = []
       watcher.on 'create', (filename, stats) ->
         files.push filename
-        console.log filename unless stats
 
       args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
       collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
         expect(_.uniq files).to.be.eql files
         expect(files.length).to.be.eql realFiles.length
         done()
+
+    it 'should handle deeply nested folders', (done) ->
+      fs.createDirSync 'test/fixtures/new'
+      fs.createFileSync 'test/fixtures/new/hello.txt'
+      watcher = new Inotifyr 'test/fixtures/new', {recursive: yes, events: 'create'}
+      files = []
+
+      watcher.on 'create', (filename, stats) -> files.push filename
+
+      fs.createDirSync 'test/fixtures/a/b/c/d/e/f/g/h/i/j/k/l'
+      fs.deleteFileSync 'test/fixtures/new/hello.txt'
+      fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
+      _.delay ->
+        expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
+        files = []
+        fs.deleteDirSync 'test/fixtures/new/a'
+        fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
+        _.delay ->
+          expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
+          done()
+        , 100
+      , 100
 
   describe 'modify', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
