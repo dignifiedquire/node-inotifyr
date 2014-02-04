@@ -358,6 +358,7 @@ describe 'Inotifyr Events', ->
 
     it 'handles recursive watch after a move', (done) ->
       fs.createDirSync  './test/fixtures/new'
+      fs.createFileSync './test/fixtures/new/hello.txt', 'hello'
 
       watcher = new Inotifyr 'test/fixtures', {
         recursive: yes,
@@ -374,13 +375,13 @@ describe 'Inotifyr Events', ->
       watcher.on 'create', (filename, stats) -> files.push filename
 
       fs.moveDir './test/fixtures/new', './test/fixtures/new2', (err) ->
-        fs.createFile './test/fixtures/new2/test.txt', 'hello', (err) ->
-          _.delay ->
+        expect(files).to.not.contain path.resolve 'test/fixtures/new2/hello.txt'
+        _.delay ->
+          fs.createFile './test/fixtures/new2/test.txt', 'hello', (err) ->
             expect(files).to.contain path.resolve 'test/fixtures/new2/test.txt'
-            expect(files).to.not.contain path.resolve 'test/fixtures/new.txt'
             watcher.close()
             done()
-          , 10
+        , 10
 
 
   describe 'close', ->
