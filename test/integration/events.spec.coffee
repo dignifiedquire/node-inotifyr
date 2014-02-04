@@ -217,7 +217,9 @@ describe 'Inotifyr Events', ->
         watcher.close()
         done()
 
-      fs.deleteDirSync 'test/fixtures/new'
+      _.delay ->
+        fs.deleteDirSync 'test/fixtures/new'
+      , 50
 
     it 'emits when the watched file was removed', (done) ->
       fs.createFileSync './test/fixtures/new.txt', 'hello world'
@@ -233,7 +235,7 @@ describe 'Inotifyr Events', ->
       # Without this delay the watcher doesn't pick up the deletion sometimes
       _.delay ->
         fs.deleteFileSync './test/fixtures/new.txt'
-      , 10
+      , 50
 
   describe 'move_self', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
