@@ -359,8 +359,11 @@ describe 'Inotifyr Events', ->
     it 'handles recursive watch after a move', (done) ->
       fs.createDirSync  './test/fixtures/new'
 
-      watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: ['move', 'create']}
-      files = {}
+      watcher = new Inotifyr 'test/fixtures', {
+        recursive: yes,
+        events: ['move', 'create']
+      }
+
       watcher.on 'move', (filename, stats) ->
         expect(filename).to.be.eql path.resolve 'test/fixtures/new2'
         expect(stats).to.have.property 'from', path.resolve 'test/fixtures/new'
@@ -374,6 +377,7 @@ describe 'Inotifyr Events', ->
         fs.createFile './test/fixtures/new2/test.txt', 'hello', (err) ->
           _.delay ->
             expect(files).to.contain path.resolve 'test/fixtures/new2/test.txt'
+            expect(files).to.not.contain path.resolve 'test/fixtures/new.txt'
             watcher.close()
             done()
           , 10
