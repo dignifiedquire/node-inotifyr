@@ -416,15 +416,14 @@ describe 'Inotifyr Events', ->
       files = []
       watcher.on 'open', (filename, stats) -> files.push filename
 
-      _.delay ->
-        expect(files).to.contain path.resolve 'test/fixtures'
-        expect(files).to.contain path.resolve 'test/fixtures/new.txt'
-        watcher.close()
-        done()
-      , 10
+      fs.open './test/fixtures/new.txt', 'w', (err, fd) ->
+        fs.close fd
 
-      fd = fs.openSync './test/fixtures/new.txt', 'w'
-      fs.close fd
+        _.delay ->
+          expect(files).to.contain path.resolve 'test/fixtures/new.txt'
+          watcher.close()
+          done()
+        , 10
 
   describe.skip 'flags', ->
     describe 'onlydir', ->
@@ -443,3 +442,34 @@ describe 'Inotifyr Events', ->
       afterEach -> fs.deleteDirSync './test/fixtures'
 
       it 'emits only one event', ->
+
+
+  describe 'ignores initial create events', ->
+    beforeEach -> fs.ensureDirSync './test/fixtures'
+    afterEach -> fs.deleteDirSync './test/fixtures'
+
+    it 'doesn\'t emit initial add events when watching a filled directory', (done) ->
+      fs.createDirSync './test/fixtures/watchme'
+      [1..5].forEach (i) ->
+        fs.createFileSync "./test/fixtures/#{i}.txt", 'hello'
+        fs.createFileSync "./test/fixtures/watchme/#{i}.txt", 'world'
+
+      watcher = new Inotifyr 'test/fixtures', {
+        events: ['move', 'delete', 'create', 'modify']
+        recursive: yes
+      }
+      files = []
+      watcher.on 'create', (filename, stats) -> files.push filename
+
+      fs.createFileSync './test/fixtures/hello.txt', 'hello'
+      _.delay ->
+        [1..5].forEach (i) ->
+          expect(files).to.not.contain path.resolve "test/fixtures/#{i}.txt"
+          expect(files).to.not.contain path.resolve "test/fixtures/watchme/#{i}.txt"
+        expect(files).to.contain path.resolve 'test/fixtures/hello.txt'
+        watcher.close()
+        done()
+      , 10
+
+
+
