@@ -48,6 +48,7 @@ describe 'Inotifyr Events', ->
         expect(filename).to.be.eql path.resolve 'test/fixtures/new'
         expect(stats).to.have.property 'isDir', yes
         expect(stats).to.have.property 'mtime'
+        expect(stats.mtime).to.be.a.number
         watcher.close()
         done()
 
@@ -59,7 +60,7 @@ describe 'Inotifyr Events', ->
       files = []
       watcher.on 'create', (filename, stats) ->
         files.push filename
-        console.log filename unless stats
+        expect(stats.mtime).to.be.a.number
 
       args = ['clone', 'https://github.com/codio/node-demo.git']
       collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
@@ -75,7 +76,9 @@ describe 'Inotifyr Events', ->
       watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
       files = []
       watcher.on 'create', (filename, stats) ->
+        expect(stats.mtime).to.be.a.number
         files.push filename
+
 
       args = ['-zxf', 'zipFile.tar.gz', '-C', 'fixtures']
       collect 'tar', args, {cwd: './test'}, 'test/fixtures/zipDir', (realFiles) ->
@@ -500,6 +503,3 @@ describe 'Inotifyr Events', ->
         watcher.close()
         done()
       , 10
-
-
-
