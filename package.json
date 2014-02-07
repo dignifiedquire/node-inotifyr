@@ -1,6 +1,6 @@
 {
   "name": "inotifyr",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Because file watching is hard.",
   "main": "index.js",
   "scripts": {
