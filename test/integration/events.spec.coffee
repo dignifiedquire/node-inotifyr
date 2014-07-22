@@ -25,6 +25,23 @@ collect = (cmd, args, opts, dir, cb) ->
       list.push path.resolve dir
       cb list
 
+describe 'symlink', ->
+  beforeEach ->
+    fs.ensureDirSync './test/fixtures'
+    fs.mkdirSync './test/fixtures/test'
+    fs.mkdirSync './test/fixtures/test/test1'
+    fs.symlinkSync './test/fixtures/test/test1', './test/fixtures/test/testsl'
+  afterEach ->
+    fs.unlinkSync './test/fixtures/test/testsl'
+    fs.deleteDirSync './test/fixtures'
+
+  it 'should watch 2 dirs', (done) ->
+    watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: ['create', 'modify', 'delete', 'move']}
+    sinon.stub watcher, '_addRecursiveWatches'
+    watcher._watch 'test/fixtures/test', {recursive: yes, events: ['create', 'modify', 'delete', 'move']}
+    expect(watcher._addRecursiveWatches).to.have.been.calledOnce
+    done()
+
 
 describe 'Inotifyr Events', ->
   describe 'create', ->
