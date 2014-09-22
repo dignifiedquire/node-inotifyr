@@ -72,23 +72,25 @@ describe 'Inotifyr Events', ->
       fs.createDirSync './test/fixtures/new'
 
     it 'should register all create events for a git clone', (done) ->
-      @timeout 5000
+      @timeout 10000
       watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
       files = []
-      watcher.on 'create', (filename, stats) ->
-        files.push filename
-        expect(stats.mtime).to.be.a.number
+      _.delay ->
+        watcher.on 'create', (filename, stats) ->
+          files.push filename
+          expect(stats.mtime).to.be.a.number
 
-      args = ['clone', 'https://github.com/codio/node-demo.git']
-      collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
-        # Filter out lock files as they are generated multiple times in git
-        uniqFiles = _.filter files, (file) -> not file.match /\.lock$/
-        expect(_.uniq uniqFiles).to.be.eql uniqFiles
-        realFiles.forEach (file) ->
-          return if file.match /\.git/
-          expect(files).to.contain file
-        done()
-
+        args = ['clone', 'https://github.com/codio/node-demo.git']
+        collect 'git', args, {cwd: './test/fixtures'}, 'test/fixtures/node-demo', (realFiles) ->
+          # Filter out lock files as they are generated multiple times in git
+          uniqFiles = _.filter files, (file) -> not file.match /\.lock$/
+          expect(_.uniq uniqFiles).to.be.eql uniqFiles
+          realFiles.forEach (file) ->
+            return if file.match /\.git/
+            expect(files).to.contain file
+          done()
+      , 300
+      
     it 'should register all create events for an unzip action', (done) ->
       watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
       files = []
@@ -108,20 +110,21 @@ describe 'Inotifyr Events', ->
       fs.createFileSync 'test/fixtures/new/hello.txt'
       watcher = new Inotifyr 'test/fixtures/new', {recursive: yes, events: 'create'}
       files = []
-
-      watcher.on 'create', (filename, stats) -> files.push filename
-
-      fs.createDirSync 'test/fixtures/a/b/c/d/e/f/g/h/i/j/k/l'
-      fs.deleteFileSync 'test/fixtures/new/hello.txt'
-      fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
       _.delay ->
-        expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
-        files = []
-        fs.deleteDirSync 'test/fixtures/new/a'
+        watcher.on 'create', (filename, stats) -> files.push filename
+
+        fs.createDirSync 'test/fixtures/a/b/c/d/e/f/g/h/i/j/k/l'
+        fs.deleteFileSync 'test/fixtures/new/hello.txt'
         fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
-        _.delay ->
+        _.delay ->      
           expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
-          done()
+          files = []
+          fs.deleteDirSync 'test/fixtures/new/a'
+          fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
+          _.delay ->
+            expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
+            done()
+          , 100
         , 100
       , 100
 
@@ -509,14 +512,16 @@ describe 'Inotifyr Events', ->
         recursive: yes
       }
       files = []
-      watcher.on 'create', (filename, stats) -> files.push filename
-
-      fs.createFileSync './test/fixtures/hello.txt', 'hello'
       _.delay ->
-        [1..5].forEach (i) ->
-          expect(files).to.not.contain path.resolve "test/fixtures/#{i}.txt"
-          expect(files).to.not.contain path.resolve "test/fixtures/watchme/#{i}.txt"
-        expect(files).to.contain path.resolve 'test/fixtures/hello.txt'
-        watcher.close()
-        done()
-      , 10
+        watcher.on 'create', (filename, stats) -> files.push filename
+
+        fs.createFileSync './test/fixtures/hello.txt', 'hello'
+        _.delay ->
+          [1..5].forEach (i) ->
+            expect(files).to.not.contain path.resolve "test/fixtures/#{i}.txt"
+            expect(files).to.not.contain path.resolve "test/fixtures/watchme/#{i}.txt"
+          expect(files).to.contain path.resolve 'test/fixtures/hello.txt'
+          watcher.close()
+          done()
+        , 10
+      , 100
