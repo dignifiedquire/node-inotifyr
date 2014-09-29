@@ -90,7 +90,7 @@ describe 'Inotifyr Events', ->
             expect(files).to.contain file
           done()
       , 300
-      
+
     it 'should register all create events for an unzip action', (done) ->
       watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: 'create'}
       files = []
@@ -116,7 +116,7 @@ describe 'Inotifyr Events', ->
         fs.createDirSync 'test/fixtures/a/b/c/d/e/f/g/h/i/j/k/l'
         fs.deleteFileSync 'test/fixtures/new/hello.txt'
         fs.copyDirSync 'test/fixtures/a', 'test/fixtures/new/a'
-        _.delay ->      
+        _.delay ->
           expect(files).to.contain path.resolve 'test/fixtures/new/a/b/c/d/e/f/g/h/i/j/k/l'
           files = []
           fs.deleteDirSync 'test/fixtures/new/a'
@@ -525,3 +525,29 @@ describe 'Inotifyr Events', ->
           done()
         , 10
       , 100
+
+  describe 'mixed events', ->
+    beforeEach ->
+      fs.ensureDirSync './test/fixtures'
+      fs.writeFileSync './test/fixtures/replace.txt', 'hello world\nhello\nhello\n\n#hello'
+      fs.writeFileSync './test/fixtures/replace2.txt', 'hello world\nhello\nhello\n\n#hello'
+    afterEach ->
+      fs.deleteDirSync './test/fixtures'
+
+    it 'should register all events for replace action (snr)', (done) ->
+      watcher = new Inotifyr 'test/fixtures', {recursive: yes, events: ['create', 'modify', 'delete']}
+      created = []
+      deleted = []
+      modified = []
+      _.delay ->
+        watcher.on 'create', (filename, stats) -> created.push filename
+        watcher.on 'delete', (filename, stats) -> deleted.push filename
+        watcher.on 'modify', (filename, stats) -> modified.push filename
+
+        args = ['--replace=goodbye', 'hello', './fixtures/*.txt']
+        collect '../node_modules/snr/bin/snr', args, {cwd: './test'}, 'test/fixtures', ->
+          expect(created).to.be.eql modified
+          expect(created).to.have.length.above deleted.length
+          done()
+
+      , 300
