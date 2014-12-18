@@ -145,6 +145,27 @@ describe 'Inotifyr Events', ->
 
       touch './test/fixtures/new.txt', 'w'
 
+    it 'should register delete and move_to as modify', (done) ->
+      fs.createFileSync './test/fixtures/new.txt', 'hello world'
+
+      watcher = new Inotifyr 'test/fixtures', events: 'modify'
+
+      events = []
+
+      watcher.on 'modify', (filename, stats) ->
+        events.push {filename, stats}
+
+        if events.length is 2
+          expect(events[0].filename).to.be.eql path.resolve 'test/fixtures/new.txt.tmp'
+          expect(events[1].filename).to.be.eql path.resolve 'test/fixtures/new.txt'
+          watcher.close()
+          done()
+
+      fs.deleteFileSync './test/fixtures/new.txt'
+      fs.createFileSync './test/fixtures/new.txt.tmp', 'hello'
+      fs.moveFileSync './test/fixtures/new.txt.tmp', './test/fixtures/new.txt'
+
+
   describe 'delete', ->
     beforeEach -> fs.ensureDirSync './test/fixtures'
     afterEach -> fs.deleteDirSync './test/fixtures'
